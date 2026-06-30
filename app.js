@@ -1,473 +1,566 @@
-const STORAGE_KEY = "volunteer-page-state-v2";
-const LEGACY_STORAGE_KEY = "volunteer-page-state-v1";
+const STORAGE_KEY = "volunteer-calendar-state-v3";
+const LEGACY_KEYS = ["volunteer-page-state-v2", "volunteer-page-state-v1"];
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 const weekdayHeaders = ["일", "월", "화", "수", "목", "금", "토"];
 
-const initialState = {
-  settings: {
-    chatLink: "",
-    formLink: "",
-    albumLink: "",
-    noticeLink: "",
-    weekOrdinal: "2",
-    weekday: "6",
-  },
-  months: [
-    makeMonth("2026-07", "2026년 7월", "태연"),
-    makeMonth("2026-08", "2026년 8월", "명인"),
-    makeMonth("2026-09", "2026년 9월", "세연"),
-    makeMonth("2026-10", "2026년 10월", "세연"),
-    makeMonth("2026-11", "2026년 11월", "태연"),
-    makeMonth("2026-12", "2026년 12월", "혜진"),
-    makeMonth("2027-01", "2027년 1월", "세영"),
-    makeMonth("2027-02", "2027년 2월", "태연"),
-    makeMonth("2027-03", "2027년 3월", "세영"),
-    makeMonth("2027-04", "2027년 4월", "xx"),
-    makeMonth("2027-05", "2027년 5월", "세연"),
-    makeMonth("2027-06", "2027년 6월", "세영"),
+const monthPlans = [
+  { key: "2026-07", label: "2026년 7월", owner: "태연" },
+  { key: "2026-08", label: "2026년 8월", owner: "명인" },
+  { key: "2026-09", label: "2026년 9월", owner: "세연" },
+  { key: "2026-10", label: "2026년 10월", owner: "세연" },
+  { key: "2026-11", label: "2026년 11월", owner: "태연" },
+  { key: "2026-12", label: "2026년 12월", owner: "혜진" },
+  { key: "2027-01", label: "2027년 1월", owner: "세영" },
+  { key: "2027-02", label: "2027년 2월", owner: "태연" },
+  { key: "2027-03", label: "2027년 3월", owner: "세영" },
+  { key: "2027-04", label: "2027년 4월", owner: "xx" },
+  { key: "2027-05", label: "2027년 5월", owner: "세연" },
+  { key: "2027-06", label: "2027년 6월", owner: "세영" },
+];
+
+const archiveItems = [
+  { month: "2025년 7월", volunteer: "서울역 급식", activity: "환규 전시", event: "" },
+  { month: "2025년 8월", volunteer: "혜영 - 빵 포장", activity: "원준/진히 계곡", event: "이취임식" },
+  { month: "2025년 9월", volunteer: "세영 - 유기견", activity: "진히 양궁", event: "" },
+  { month: "2025년 10월", volunteer: "박철 - 플로깅", activity: "원준 등산", event: "" },
+  { month: "2025년 11월", volunteer: "혜영 - 김장", activity: "전시", event: "" },
+  { month: "2025년 12월", volunteer: "보육원 청소, 선물", activity: "볼링", event: "송년회" },
+  { month: "2026년 1월", volunteer: "연탄", activity: "스키장", event: "" },
+  { month: "2026년 2월", volunteer: "제빵", activity: "", event: "" },
+];
+
+const defaultState = {
+  events: [],
+  organizations: [
+    {
+      id: createId(),
+      name: "서울특별시립 따스한채움터",
+      address: "서울시 용산구 한강대로 377",
+      meeting: "2층 봉사자대기실에서 집결, 주차 불가",
+      dressCode: "편한 복장, 양말",
+      memo: "무료 급식 봉사활동 공지에 사용한 기관",
+    },
   ],
 };
 
 let state = loadState();
-let selectedDate = getInitialSelectedDate();
-let saveTimer;
+let currentMonthIndex = getInitialMonthIndex();
+let selectedDate = `${monthPlans[currentMonthIndex].key}-01`;
+let selectedEventId = null;
+let editingEventId = null;
+let editingOrganizationId = null;
+let touchStartX = 0;
 
 const elements = {
-  settingsForm: document.querySelector("#settingsForm"),
-  yearCalendar: document.querySelector("#yearCalendar"),
-  detailForm: document.querySelector("#detailForm"),
-  registerDateBtn: document.querySelector("#registerDateBtn"),
-  selectedDateSummary: document.querySelector("#selectedDateSummary"),
-  detailTitle: document.querySelector("#detailTitle"),
-  overviewTitle: document.querySelector("#overviewTitle"),
-  currentOwner: document.querySelector("#currentOwner"),
-  currentVolunteer: document.querySelector("#currentVolunteer"),
-  currentTime: document.querySelector("#currentTime"),
-  ownerBars: document.querySelector("#ownerBars"),
-  scheduleTable: document.querySelector("#scheduleTable"),
-  linkButtons: document.querySelector("#linkButtons"),
-  saveState: document.querySelector("#saveState"),
+  tabButtons: document.querySelectorAll(".tab-button"),
+  tabPanels: document.querySelectorAll(".tab-panel"),
+  calendarView: document.querySelector("#calendarView"),
+  dateDetailView: document.querySelector("#dateDetailView"),
+  calendarTitle: document.querySelector("#calendarTitle"),
+  monthOwner: document.querySelector("#monthOwner"),
+  calendarGrid: document.querySelector("#calendarGrid"),
+  calendarShell: document.querySelector("#calendarShell"),
+  prevMonthBtn: document.querySelector("#prevMonthBtn"),
+  nextMonthBtn: document.querySelector("#nextMonthBtn"),
+  monthEventCount: document.querySelector("#monthEventCount"),
+  monthEvents: document.querySelector("#monthEvents"),
+  backToCalendarBtn: document.querySelector("#backToCalendarBtn"),
+  selectedDateTitle: document.querySelector("#selectedDateTitle"),
+  selectedDateMeta: document.querySelector("#selectedDateMeta"),
+  emptyState: document.querySelector("#emptyState"),
+  createEventBtn: document.querySelector("#createEventBtn"),
+  eventView: document.querySelector("#eventView"),
+  eventViewTitle: document.querySelector("#eventViewTitle"),
+  eventViewStatus: document.querySelector("#eventViewStatus"),
+  eventViewFields: document.querySelector("#eventViewFields"),
+  editEventBtn: document.querySelector("#editEventBtn"),
+  deleteEventBtn: document.querySelector("#deleteEventBtn"),
+  eventForm: document.querySelector("#eventForm"),
+  eventFormTitle: document.querySelector("#eventFormTitle"),
+  cancelEventFormBtn: document.querySelector("#cancelEventFormBtn"),
   noticePreview: document.querySelector("#noticePreview"),
   copyNoticeBtn: document.querySelector("#copyNoticeBtn"),
+  organizationList: document.querySelector("#organizationList"),
+  organizationForm: document.querySelector("#organizationForm"),
+  organizationFormTitle: document.querySelector("#organizationFormTitle"),
+  addOrganizationBtn: document.querySelector("#addOrganizationBtn"),
+  cancelOrganizationBtn: document.querySelector("#cancelOrganizationBtn"),
+  archiveList: document.querySelector("#archiveList"),
 };
 
-function makeMonth(key, label, owner) {
-  return {
-    key,
-    label,
-    owner,
-    status: "준비중",
-    volunteerTitle: "",
-    volunteerDate: "",
-    volunteerStartTime: "",
-    volunteerEndTime: "",
-    volunteerPlace: "",
-    activityTitle: "",
-    activityDate: "",
-    eventTitle: "",
-    note: "",
-    noticeIntro: "",
-    dressCode: "편한 복장, 양말",
-    participantInfo: "10명 (이후 대기)",
-    memberFee: "참가비 없음",
-    associateFee: "1만원 (환불 불가한 국제 로타리재단 기부금)",
-    bankAccount: "하나은행 210-910031-69304 서울지아이에이로타리클럽",
-    detailSchedule: "",
-  };
+function createId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function cloneInitialState() {
-  return JSON.parse(JSON.stringify(initialState));
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function loadState() {
-  const fallback = cloneInitialState();
   try {
-    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!saved) return fallback;
-    return normalizeState(JSON.parse(saved));
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return normalizeState(JSON.parse(saved));
+
+    for (const key of LEGACY_KEYS) {
+      const legacy = localStorage.getItem(key);
+      if (legacy) return migrateLegacyState(JSON.parse(legacy));
+    }
   } catch {
-    return fallback;
+    return clone(defaultState);
   }
+
+  return clone(defaultState);
 }
 
 function normalizeState(input) {
-  const fallback = cloneInitialState();
-  if (!input || typeof input !== "object") return fallback;
+  const fallback = clone(defaultState);
+  return {
+    events: Array.isArray(input.events) ? input.events.map(normalizeEvent) : fallback.events,
+    organizations: Array.isArray(input.organizations) ? input.organizations.map(normalizeOrganization) : fallback.organizations,
+  };
+}
 
-  const incomingMonths = Array.isArray(input.months) ? input.months : [];
-  const months = fallback.months.map((month) => {
-    const saved = incomingMonths.find((item) => item.key === month.key);
-    return { ...month, ...(saved || {}) };
-  });
+function migrateLegacyState(input) {
+  const fallback = clone(defaultState);
+  const events = Array.isArray(input.months)
+    ? input.months
+        .filter((month) => month.volunteerDate)
+        .map((month) =>
+          normalizeEvent({
+            id: createId(),
+            date: month.volunteerDate,
+            owner: month.owner,
+            title: month.volunteerTitle,
+            status: month.status,
+            startTime: month.volunteerStartTime,
+            endTime: month.volunteerEndTime,
+            place: month.volunteerPlace,
+            intro: month.noticeIntro,
+            dressCode: month.dressCode,
+            capacity: month.participantInfo,
+            memberFee: month.memberFee,
+            associateFee: month.associateFee,
+            bankAccount: month.bankAccount,
+            detailSchedule: month.detailSchedule,
+            memo: month.note,
+          }),
+        )
+    : [];
 
   return {
-    settings: { ...fallback.settings, ...(input.settings || {}) },
-    months,
+    events,
+    organizations: fallback.organizations,
+  };
+}
+
+function normalizeEvent(event) {
+  return {
+    id: event.id || createId(),
+    date: event.date || "",
+    owner: event.owner || "",
+    title: event.title || "",
+    status: event.status || "준비중",
+    startTime: event.startTime || "",
+    endTime: event.endTime || "",
+    place: event.place || "",
+    intro: event.intro || "",
+    dressCode: event.dressCode || "편한 복장, 양말",
+    capacity: event.capacity || "10명 (이후 대기)",
+    memberFee: event.memberFee || "참가비 없음",
+    associateFee: event.associateFee || "1만원 (환불 불가한 국제 로타리재단 기부금)",
+    bankAccount: event.bankAccount || "하나은행 210-910031-69304 서울지아이에이로타리클럽",
+    detailSchedule: event.detailSchedule || "",
+    memo: event.memo || "",
+  };
+}
+
+function normalizeOrganization(org) {
+  return {
+    id: org.id || createId(),
+    name: org.name || "",
+    address: org.address || "",
+    meeting: org.meeting || "",
+    dressCode: org.dressCode || "",
+    memo: org.memo || "",
   };
 }
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  elements.saveState.textContent = `저장됨 ${formatTime(new Date())}`;
 }
 
-function scheduleSave() {
-  elements.saveState.textContent = "저장 중";
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveState, 180);
-}
-
-function getInitialSelectedDate() {
+function getInitialMonthIndex() {
   const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const currentMonth = state.months.find((month) => month.key === currentKey) || state.months[0];
-  return currentMonth.volunteerDate || `${currentMonth.key}-01`;
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const index = monthPlans.findIndex((month) => month.key === key);
+  return index >= 0 ? index : 0;
 }
 
-function getSelectedMonth() {
-  return getMonthForDate(selectedDate) || state.months[0];
-}
-
-function getMonthForDate(dateString) {
+function getMonthPlan(dateString = selectedDate) {
   const key = dateString.slice(0, 7);
-  return state.months.find((month) => month.key === key);
+  return monthPlans.find((month) => month.key === key) || monthPlans[currentMonthIndex];
 }
 
-function formatTime(date) {
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+function getEventByDate(dateString) {
+  return state.events.find((event) => event.date === dateString) || null;
+}
+
+function getEventById(id) {
+  return state.events.find((event) => event.id === id) || null;
 }
 
 function formatDate(dateString) {
-  if (!dateString) return "미정";
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "미정";
-  return `${date.getMonth() + 1}/${date.getDate()} (${weekdays[date.getDay()]})`;
-}
-
-function formatFullDate(dateString) {
-  if (!dateString) return "날짜 미정";
   const date = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(date.getTime())) return "날짜 미정";
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`;
 }
 
+function formatShortDate(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "미정";
+  return `${date.getMonth() + 1}/${date.getDate()} (${weekdays[date.getDay()]})`;
+}
+
 function formatNoticeDate(dateString) {
-  if (!dateString) return "미정";
   const date = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(date.getTime())) return "미정";
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일(${weekdays[date.getDay()]})`;
 }
 
 function formatNoticeTitleDate(dateString) {
-  if (!dateString) return "날짜 미정";
   const date = new Date(`${dateString}T00:00:00`);
   if (Number.isNaN(date.getTime())) return "날짜 미정";
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
-function formatTimeRange(month) {
-  const times = [month.volunteerStartTime, month.volunteerEndTime].filter(Boolean);
-  return times.length ? times.join(" - ") : "미정";
-}
-
-function formatNoticeDateTime(month) {
-  const date = formatNoticeDate(month.volunteerDate);
-  const time = [month.volunteerStartTime, month.volunteerEndTime].filter(Boolean).join(" - ");
-  return time ? `${date} ${time}` : date;
+function formatTimeRange(event) {
+  const times = [event.startTime, event.endTime].filter(Boolean);
+  return times.length ? times.join(" - ") : "시간 미정";
 }
 
 function valueOrPending(value, fallback = "미정") {
   return value && value.trim() ? value.trim() : fallback;
 }
 
-function getNthWeekdayDate(monthKey, ordinal, weekdayValue) {
-  const [year, month] = monthKey.split("-").map(Number);
-  const weekday = Number(weekdayValue);
-  const date = new Date(year, month - 1, 1);
-
-  if (ordinal === "last") {
-    const lastDate = new Date(year, month, 0);
-    const offset = (lastDate.getDay() - weekday + 7) % 7;
-    lastDate.setDate(lastDate.getDate() - offset);
-    return toInputDate(lastDate);
-  }
-
-  const firstOffset = (weekday - date.getDay() + 7) % 7;
-  const targetDate = 1 + firstOffset + (Number(ordinal) - 1) * 7;
-  return toInputDate(new Date(year, month - 1, targetDate));
-}
-
-function toInputDate(date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
-function applySettingsToForm() {
-  Object.entries(state.settings).forEach(([key, value]) => {
-    const input = elements.settingsForm.elements[key];
-    if (input) input.value = value;
-  });
-}
-
 function render() {
-  applySettingsToForm();
-  renderLinks();
+  renderTabs();
   renderCalendar();
-  renderSelectedDate();
-  renderOwnerBars();
-  renderTable();
+  renderMonthEvents();
+  renderOrganizations();
+  renderArchive();
 }
 
-function renderLinks() {
-  const links = [
-    ["단톡방", state.settings.chatLink],
-    ["신청 폼", state.settings.formLink],
-    ["사진 앨범", state.settings.albumLink],
-    ["공지 문서", state.settings.noticeLink],
-  ];
-
-  elements.linkButtons.innerHTML = "";
-  links.forEach(([label, url]) => {
-    const safeUrl = getSafeUrl(url);
-    if (safeUrl) {
-      const anchor = document.createElement("a");
-      anchor.href = safeUrl;
-      anchor.target = "_blank";
-      anchor.rel = "noreferrer";
-      anchor.textContent = label;
-      elements.linkButtons.append(anchor);
-      return;
-    }
-
-    const placeholder = document.createElement("div");
-    placeholder.className = "empty-link";
-    placeholder.textContent = url ? `${label} 링크 형식 확인` : `${label} 링크 입력 전`;
-    elements.linkButtons.append(placeholder);
+function renderTabs() {
+  elements.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
 }
 
-function getSafeUrl(value) {
-  if (!value || !value.trim()) return "";
-  try {
-    const url = new URL(value.trim());
-    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
-  } catch {
-    return "";
-  }
+function switchTab(tab) {
+  elements.tabButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.tab === tab);
+  });
+  elements.tabPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.panel !== tab;
+    panel.classList.toggle("is-active", panel.dataset.panel === tab);
+  });
 }
 
 function renderCalendar() {
-  elements.yearCalendar.innerHTML = "";
-  state.months.forEach((month) => {
-    elements.yearCalendar.append(createMonthCalendar(month));
-  });
-}
-
-function createMonthCalendar(month) {
-  const section = document.createElement("section");
-  section.className = "month-calendar";
-
-  const header = document.createElement("div");
-  header.className = "month-calendar-head";
-  header.innerHTML = `
-    <div>
-      <h3>${escapeHtml(month.label)}</h3>
-      <p>담당: ${escapeHtml(valueOrPending(month.owner))}</p>
-    </div>
-    <span class="status-pill" data-status="${escapeHtml(month.status)}">${escapeHtml(month.status)}</span>
-  `;
-
-  const grid = document.createElement("div");
-  grid.className = "calendar-grid";
+  const month = monthPlans[currentMonthIndex];
+  elements.calendarTitle.textContent = month.label;
+  elements.monthOwner.textContent = `담당: ${month.owner}`;
+  elements.prevMonthBtn.disabled = currentMonthIndex === 0;
+  elements.nextMonthBtn.disabled = currentMonthIndex === monthPlans.length - 1;
+  elements.calendarGrid.innerHTML = "";
 
   weekdayHeaders.forEach((day) => {
-    const headerCell = document.createElement("div");
-    headerCell.className = "weekday-cell";
-    headerCell.textContent = day;
-    grid.append(headerCell);
+    const cell = document.createElement("div");
+    cell.className = "weekday";
+    cell.textContent = day;
+    elements.calendarGrid.append(cell);
   });
 
   const [year, monthNumber] = month.key.split("-").map(Number);
   const firstDate = new Date(year, monthNumber - 1, 1);
   const lastDate = new Date(year, monthNumber, 0);
 
-  for (let index = 0; index < firstDate.getDay(); index += 1) {
+  for (let i = 0; i < firstDate.getDay(); i += 1) {
     const empty = document.createElement("div");
-    empty.className = "calendar-day is-empty";
-    grid.append(empty);
+    empty.className = "day-cell is-empty";
+    elements.calendarGrid.append(empty);
   }
 
   for (let day = 1; day <= lastDate.getDate(); day += 1) {
     const dateString = `${month.key}-${String(day).padStart(2, "0")}`;
-    const hasVolunteer = month.volunteerDate === dateString;
-    const isSelected = selectedDate === dateString;
+    const event = getEventByDate(dateString);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "calendar-day";
+    button.className = "day-cell";
     button.dataset.date = dateString;
-    if (hasVolunteer) button.classList.add("has-volunteer");
-    if (isSelected) button.classList.add("is-selected");
+    if (event) button.classList.add("has-event");
+    if (dateString === selectedDate) button.classList.add("is-selected");
 
-    const dateLabel = document.createElement("span");
-    dateLabel.className = "day-number";
-    dateLabel.textContent = String(day);
-    button.append(dateLabel);
-
-    if (hasVolunteer) {
-      const info = document.createElement("span");
-      info.className = "day-event";
-      info.innerHTML = `
-        <strong>${escapeHtml(valueOrPending(month.owner))}</strong>
-        <span>${escapeHtml(valueOrPending(month.volunteerTitle, "봉사"))}</span>
-        <em>${escapeHtml(formatTimeRange(month))}</em>
+    button.innerHTML = `<span class="day-number">${day}</span>`;
+    if (event) {
+      const chip = document.createElement("span");
+      chip.className = "event-chip";
+      chip.innerHTML = `
+        <strong>담당: ${escapeHtml(valueOrPending(event.owner))}</strong>
+        <span>${escapeHtml(valueOrPending(event.title, "봉사"))}</span>
+        <em>${escapeHtml(formatTimeRange(event))}</em>
       `;
-      button.append(info);
+      button.append(chip);
     }
 
-    button.addEventListener("click", () => {
-      selectedDate = dateString;
-      renderCalendar();
-      renderSelectedDate();
-    });
-
-    grid.append(button);
-  }
-
-  section.append(header, grid);
-  return section;
-}
-
-function renderSelectedDate() {
-  const month = getSelectedMonth();
-  const hasVolunteer = month.volunteerDate === selectedDate;
-  elements.detailTitle.textContent = formatFullDate(selectedDate);
-  elements.overviewTitle.textContent = hasVolunteer ? month.label : "선택된 날짜";
-
-  elements.currentOwner.textContent = valueOrPending(month.owner);
-  elements.currentVolunteer.textContent = hasVolunteer ? valueOrPending(month.volunteerTitle) : "등록된 봉사 없음";
-  elements.currentTime.textContent = hasVolunteer ? formatTimeRange(month) : "미정";
-
-  elements.selectedDateSummary.innerHTML = "";
-  if (hasVolunteer) {
-    addSummaryRow("담당", valueOrPending(month.owner));
-    addSummaryRow("봉사", valueOrPending(month.volunteerTitle));
-    addSummaryRow("시간", formatTimeRange(month));
-    addSummaryRow("장소", valueOrPending(month.volunteerPlace));
-    addSummaryRow("상태", month.status);
-    elements.registerDateBtn.hidden = true;
-    elements.detailForm.hidden = false;
-    bindDetailForm(month);
-    elements.noticePreview.value = buildNoticeText(month);
-  } else {
-    addSummaryRow("상태", "등록된 봉사활동 없음");
-    addSummaryRow("월 담당", valueOrPending(month.owner));
-    addSummaryRow("선택 날짜", formatFullDate(selectedDate));
-    elements.registerDateBtn.hidden = false;
-    elements.registerDateBtn.textContent = month.volunteerDate ? "이 날짜로 봉사일 변경" : "이 날짜에 봉사 등록";
-    elements.detailForm.hidden = true;
+    button.addEventListener("click", () => openDateDetail(dateString));
+    elements.calendarGrid.append(button);
   }
 }
 
-function addSummaryRow(label, value) {
-  const row = document.createElement("div");
-  row.innerHTML = `<strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span>`;
-  elements.selectedDateSummary.append(row);
-}
+function renderMonthEvents() {
+  const month = monthPlans[currentMonthIndex];
+  const events = state.events
+    .filter((event) => event.date.startsWith(month.key))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-function bindDetailForm(month) {
-  [
-    "owner",
-    "status",
-    "volunteerTitle",
-    "volunteerDate",
-    "volunteerStartTime",
-    "volunteerEndTime",
-    "volunteerPlace",
-    "activityTitle",
-    "activityDate",
-    "eventTitle",
-    "note",
-    "noticeIntro",
-    "dressCode",
-    "participantInfo",
-    "memberFee",
-    "associateFee",
-    "bankAccount",
-    "detailSchedule",
-  ].forEach((name) => {
-    const field = elements.detailForm.elements[name];
-    if (field) field.value = month[name] || "";
+  elements.monthEventCount.textContent = `${events.length}건`;
+  elements.monthEvents.innerHTML = "";
+
+  if (!events.length) {
+    const empty = document.createElement("p");
+    empty.className = "subtle";
+    empty.textContent = "이 달에 등록된 봉사활동이 없습니다.";
+    elements.monthEvents.append(empty);
+    return;
+  }
+
+  events.forEach((event) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "month-event";
+    button.innerHTML = `
+      <strong>${escapeHtml(formatShortDate(event.date))}</strong>
+      <span>${escapeHtml(valueOrPending(event.title, "봉사"))}</span>
+      <em>${escapeHtml(valueOrPending(event.owner))} / ${escapeHtml(formatTimeRange(event))}</em>
+    `;
+    button.addEventListener("click", () => openDateDetail(event.date));
+    elements.monthEvents.append(button);
   });
 }
 
-function updateSelectedMonthFromForm(event) {
-  const field = event.target.name;
-  if (!field) return;
-
-  const month = getSelectedMonth();
-  month[field] = event.target.value;
-  if (field === "volunteerDate" && event.target.value) {
-    selectedDate = event.target.value;
-  }
-
+function changeMonth(delta) {
+  currentMonthIndex = Math.max(0, Math.min(monthPlans.length - 1, currentMonthIndex + delta));
+  selectedDate = `${monthPlans[currentMonthIndex].key}-01`;
   renderCalendar();
-  renderSelectedDate();
-  renderOwnerBars();
-  renderTable();
-  scheduleSave();
+  renderMonthEvents();
 }
 
-function registerSelectedDate() {
-  const month = getSelectedMonth();
-  month.volunteerDate = selectedDate;
-  if (month.status === "준비중") month.status = "모집중";
+function openDateDetail(dateString) {
+  selectedDate = dateString;
+  const event = getEventByDate(dateString);
+  selectedEventId = event ? event.id : null;
+  editingEventId = null;
+  elements.calendarView.hidden = true;
+  elements.dateDetailView.hidden = false;
+  renderDateDetail();
   renderCalendar();
-  renderSelectedDate();
-  renderTable();
-  scheduleSave();
 }
 
-function buildNoticeText(month) {
-  const title = valueOrPending(month.volunteerTitle, "봉사활동");
-  const lines = [`[${formatNoticeTitleDate(month.volunteerDate)}] ${title}`];
+function closeDateDetail() {
+  elements.dateDetailView.hidden = true;
+  elements.calendarView.hidden = false;
+  selectedEventId = null;
+  editingEventId = null;
+  renderCalendar();
+  renderMonthEvents();
+}
 
-  if (month.noticeIntro && month.noticeIntro.trim()) {
-    lines.push(month.noticeIntro.trim());
+function renderDateDetail() {
+  const event = selectedEventId ? getEventById(selectedEventId) : getEventByDate(selectedDate);
+  selectedEventId = event ? event.id : null;
+  elements.selectedDateTitle.textContent = formatDate(selectedDate);
+  elements.selectedDateMeta.innerHTML = "";
+  addMeta("월 담당", getMonthPlan(selectedDate).owner);
+
+  if (!event) {
+    elements.emptyState.hidden = false;
+    elements.eventView.hidden = true;
+    elements.eventForm.hidden = true;
+    addMeta("등록 상태", "등록된 봉사활동 없음");
+    return;
   }
 
+  elements.emptyState.hidden = true;
+  elements.eventView.hidden = editingEventId === event.id;
+  elements.eventForm.hidden = editingEventId !== event.id;
+
+  addMeta("등록 상태", event.status);
+  addMeta("봉사명", valueOrPending(event.title));
+  addMeta("시간", formatTimeRange(event));
+
+  if (editingEventId === event.id) {
+    bindEventForm(event);
+    return;
+  }
+
+  elements.eventViewTitle.textContent = valueOrPending(event.title, "봉사활동");
+  elements.eventViewStatus.textContent = event.status;
+  elements.eventViewStatus.dataset.status = event.status;
+  elements.noticePreview.value = buildNoticeText(event);
+  elements.eventViewFields.innerHTML = "";
+  [
+    ["담당", event.owner],
+    ["일시", `${formatDate(event.date)} ${formatTimeRange(event)}`],
+    ["장소", event.place],
+    ["복장", event.dressCode],
+    ["인원", event.capacity],
+    ["메모", event.memo],
+  ].forEach(([label, value]) => addEventField(label, value));
+}
+
+function addMeta(label, value) {
+  const row = document.createElement("div");
+  row.innerHTML = `<strong>${escapeHtml(label)}</strong><span>${escapeHtml(valueOrPending(value))}</span>`;
+  elements.selectedDateMeta.append(row);
+}
+
+function addEventField(label, value) {
+  const group = document.createElement("div");
+  group.innerHTML = `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(valueOrPending(value))}</dd>`;
+  elements.eventViewFields.append(group);
+}
+
+function startCreateEvent() {
+  selectedEventId = null;
+  editingEventId = "new";
+  elements.emptyState.hidden = true;
+  elements.eventView.hidden = true;
+  elements.eventForm.hidden = false;
+  bindEventForm(makeBlankEvent(selectedDate));
+}
+
+function startEditEvent() {
+  const event = getEventById(selectedEventId);
+  if (!event) return;
+  editingEventId = event.id;
+  renderDateDetail();
+}
+
+function cancelEventForm() {
+  editingEventId = null;
+  renderDateDetail();
+}
+
+function makeBlankEvent(date) {
+  return normalizeEvent({
+    id: "new",
+    date,
+    owner: getMonthPlan(date).owner,
+    status: "모집중",
+  });
+}
+
+function bindEventForm(event) {
+  elements.eventFormTitle.textContent = editingEventId === "new" ? "봉사활동 등록" : "봉사활동 수정";
+  Object.entries({
+    date: event.date,
+    owner: event.owner,
+    title: event.title,
+    status: event.status,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    place: event.place,
+    intro: event.intro,
+    dressCode: event.dressCode,
+    capacity: event.capacity,
+    memberFee: event.memberFee,
+    associateFee: event.associateFee,
+    bankAccount: event.bankAccount,
+    detailSchedule: event.detailSchedule,
+    memo: event.memo,
+  }).forEach(([name, value]) => {
+    const field = elements.eventForm.elements[name];
+    if (field) field.value = value || "";
+  });
+}
+
+function submitEventForm(event) {
+  event.preventDefault();
+  const data = new FormData(elements.eventForm);
+  const payload = normalizeEvent({
+    id: editingEventId === "new" ? createId() : editingEventId,
+    date: data.get("date"),
+    owner: data.get("owner"),
+    title: data.get("title"),
+    status: data.get("status"),
+    startTime: data.get("startTime"),
+    endTime: data.get("endTime"),
+    place: data.get("place"),
+    intro: data.get("intro"),
+    dressCode: data.get("dressCode"),
+    capacity: data.get("capacity"),
+    memberFee: data.get("memberFee"),
+    associateFee: data.get("associateFee"),
+    bankAccount: data.get("bankAccount"),
+    detailSchedule: data.get("detailSchedule"),
+    memo: data.get("memo"),
+  });
+
+  state.events = state.events.filter((item) => item.id !== payload.id && item.date !== payload.date);
+  state.events.push(payload);
+  state.events.sort((a, b) => a.date.localeCompare(b.date));
+  selectedDate = payload.date;
+  selectedEventId = payload.id;
+  currentMonthIndex = Math.max(0, monthPlans.findIndex((month) => month.key === payload.date.slice(0, 7)));
+  editingEventId = null;
+  saveState();
+  renderCalendar();
+  renderMonthEvents();
+  renderDateDetail();
+}
+
+function deleteSelectedEvent() {
+  const event = getEventById(selectedEventId);
+  if (!event) return;
+  const confirmed = window.confirm("이 봉사활동을 삭제할까요?");
+  if (!confirmed) return;
+  state.events = state.events.filter((item) => item.id !== event.id);
+  selectedEventId = null;
+  editingEventId = null;
+  saveState();
+  renderCalendar();
+  renderMonthEvents();
+  renderDateDetail();
+}
+
+function buildNoticeText(event) {
+  const lines = [`[${formatNoticeTitleDate(event.date)}] ${valueOrPending(event.title, "봉사활동")}`];
+  if (event.intro && event.intro.trim()) lines.push(event.intro.trim());
   lines.push(
     "",
-    `일시: ${formatNoticeDateTime(month)}`,
+    `일시: ${formatNoticeDate(event.date)} ${formatTimeRange(event)}`,
     "",
-    `장소: ${valueOrPending(month.volunteerPlace)}`,
+    `장소: ${valueOrPending(event.place)}`,
     "",
-    `복장: ${valueOrPending(month.dressCode)}`,
+    `복장: ${valueOrPending(event.dressCode)}`,
     "",
-    `인원: ${valueOrPending(month.participantInfo)}`,
+    `인원: ${valueOrPending(event.capacity)}`,
     "",
     "세부 일정:",
-    valueOrPending(month.detailSchedule),
+    valueOrPending(event.detailSchedule),
     "",
-    `정회원: ${valueOrPending(month.memberFee)}`,
-    `준회원: ${valueOrPending(month.associateFee)}`,
+    `정회원: ${valueOrPending(event.memberFee)}`,
+    `준회원: ${valueOrPending(event.associateFee)}`,
   );
-
-  if (month.bankAccount && month.bankAccount.trim()) {
-    lines.push(month.bankAccount.trim());
-  }
-
+  if (event.bankAccount && event.bankAccount.trim()) lines.push(event.bankAccount.trim());
   return lines.join("\n");
 }
 
-async function copyNoticeText() {
-  const text = elements.noticePreview.value;
+async function copyNotice() {
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(elements.noticePreview.value);
     } else {
       elements.noticePreview.focus();
       elements.noticePreview.select();
@@ -477,62 +570,105 @@ async function copyNoticeText() {
   } catch {
     elements.copyNoticeBtn.textContent = "복사 실패";
   }
-
   setTimeout(() => {
     elements.copyNoticeBtn.textContent = "공지 복사";
-  }, 1400);
+  }, 1200);
 }
 
-function renderOwnerBars() {
-  const counts = state.months.reduce((map, month) => {
-    const owner = valueOrPending(month.owner);
-    map.set(owner, (map.get(owner) || 0) + 1);
-    return map;
-  }, new Map());
-  const max = Math.max(...counts.values());
+function renderOrganizations() {
+  elements.organizationList.innerHTML = "";
+  if (!state.organizations.length) {
+    const empty = document.createElement("p");
+    empty.className = "subtle";
+    empty.textContent = "등록된 기관이 없습니다.";
+    elements.organizationList.append(empty);
+    return;
+  }
 
-  elements.ownerBars.innerHTML = "";
-  [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
-    .forEach(([owner, count]) => {
-      const row = document.createElement("div");
-      row.className = "owner-row";
-      row.innerHTML = `
-        <strong>${escapeHtml(owner)}</strong>
-        <div class="bar-track"><div class="bar-fill" style="width: ${(count / max) * 100}%"></div></div>
-        <span>${count}회</span>
-      `;
-      elements.ownerBars.append(row);
-    });
+  state.organizations.forEach((org) => {
+    const card = document.createElement("article");
+    card.className = "organization-card";
+    card.innerHTML = `
+      <h3>${escapeHtml(org.name)}</h3>
+      <dl>
+        <div><dt>주소</dt><dd>${escapeHtml(valueOrPending(org.address))}</dd></div>
+        <div><dt>집결/주차</dt><dd>${escapeHtml(valueOrPending(org.meeting))}</dd></div>
+        <div><dt>기본 복장</dt><dd>${escapeHtml(valueOrPending(org.dressCode))}</dd></div>
+        <div><dt>메모</dt><dd>${escapeHtml(valueOrPending(org.memo))}</dd></div>
+      </dl>
+      <div class="inline-actions">
+        <button type="button" data-action="edit">수정</button>
+        <button type="button" class="danger" data-action="delete">삭제</button>
+      </div>
+    `;
+    card.querySelector('[data-action="edit"]').addEventListener("click", () => startEditOrganization(org.id));
+    card.querySelector('[data-action="delete"]').addEventListener("click", () => deleteOrganization(org.id));
+    elements.organizationList.append(card);
+  });
 }
 
-function renderTable() {
-  elements.scheduleTable.innerHTML = "";
-  state.months.forEach((month) => {
-    const row = document.createElement("tr");
-    const dateTime = month.volunteerDate
-      ? `${formatDate(month.volunteerDate)} ${formatTimeRange(month)}`
-      : "미정";
+function startCreateOrganization() {
+  editingOrganizationId = "new";
+  elements.organizationForm.hidden = false;
+  elements.organizationFormTitle.textContent = "기관 등록";
+  elements.organizationForm.reset();
+}
 
-    [
-      month.label,
-      valueOrPending(month.owner),
-      valueOrPending(month.volunteerTitle),
-      dateTime,
-    ].forEach((value) => {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(cell);
-    });
+function startEditOrganization(id) {
+  const org = state.organizations.find((item) => item.id === id);
+  if (!org) return;
+  editingOrganizationId = id;
+  elements.organizationForm.hidden = false;
+  elements.organizationFormTitle.textContent = "기관 수정";
+  ["name", "address", "meeting", "dressCode", "memo"].forEach((name) => {
+    elements.organizationForm.elements[name].value = org[name] || "";
+  });
+}
 
-    const statusCell = document.createElement("td");
-    const status = document.createElement("span");
-    status.className = "status-pill";
-    status.dataset.status = month.status;
-    status.textContent = month.status;
-    statusCell.append(status);
-    row.append(statusCell);
-    elements.scheduleTable.append(row);
+function cancelOrganizationForm() {
+  editingOrganizationId = null;
+  elements.organizationForm.hidden = true;
+}
+
+function submitOrganizationForm(event) {
+  event.preventDefault();
+  const data = new FormData(elements.organizationForm);
+  const payload = normalizeOrganization({
+    id: editingOrganizationId === "new" ? createId() : editingOrganizationId,
+    name: data.get("name"),
+    address: data.get("address"),
+    meeting: data.get("meeting"),
+    dressCode: data.get("dressCode"),
+    memo: data.get("memo"),
+  });
+
+  state.organizations = state.organizations.filter((item) => item.id !== payload.id);
+  state.organizations.push(payload);
+  saveState();
+  cancelOrganizationForm();
+  renderOrganizations();
+}
+
+function deleteOrganization(id) {
+  const confirmed = window.confirm("이 기관을 삭제할까요?");
+  if (!confirmed) return;
+  state.organizations = state.organizations.filter((item) => item.id !== id);
+  saveState();
+  renderOrganizations();
+}
+
+function renderArchive() {
+  elements.archiveList.innerHTML = "";
+  archiveItems.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "archive-card";
+    card.innerHTML = `
+      <strong>${escapeHtml(item.month)}</strong>
+      <span>봉사: ${escapeHtml(valueOrPending(item.volunteer))}</span>
+      <span>액티비티: ${escapeHtml(valueOrPending(item.activity))}</span>
+      <span>행사: ${escapeHtml(valueOrPending(item.event, "없음"))}</span>
+    `;
+    elements.archiveList.append(card);
   });
 }
 
@@ -545,82 +681,27 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function updateSettingsFromForm() {
-  const data = new FormData(elements.settingsForm);
-  state.settings = {
-    chatLink: data.get("chatLink").trim(),
-    formLink: data.get("formLink").trim(),
-    albumLink: data.get("albumLink").trim(),
-    noticeLink: data.get("noticeLink").trim(),
-    weekOrdinal: data.get("weekOrdinal"),
-    weekday: data.get("weekday"),
-  };
-  renderLinks();
-  scheduleSave();
-}
+elements.prevMonthBtn.addEventListener("click", () => changeMonth(-1));
+elements.nextMonthBtn.addEventListener("click", () => changeMonth(1));
+elements.backToCalendarBtn.addEventListener("click", closeDateDetail);
+elements.createEventBtn.addEventListener("click", startCreateEvent);
+elements.editEventBtn.addEventListener("click", startEditEvent);
+elements.deleteEventBtn.addEventListener("click", deleteSelectedEvent);
+elements.cancelEventFormBtn.addEventListener("click", cancelEventForm);
+elements.eventForm.addEventListener("submit", submitEventForm);
+elements.copyNoticeBtn.addEventListener("click", copyNotice);
+elements.addOrganizationBtn.addEventListener("click", startCreateOrganization);
+elements.cancelOrganizationBtn.addEventListener("click", cancelOrganizationForm);
+elements.organizationForm.addEventListener("submit", submitOrganizationForm);
 
-function fillVolunteerDates(overwrite) {
-  state.months = state.months.map((month) => {
-    if (!overwrite && month.volunteerDate) return month;
-    return {
-      ...month,
-      volunteerDate: getNthWeekdayDate(month.key, state.settings.weekOrdinal, state.settings.weekday),
-    };
-  });
+elements.calendarShell.addEventListener("touchstart", (event) => {
+  touchStartX = event.touches[0].clientX;
+});
 
-  if (!getMonthForDate(selectedDate)?.volunteerDate) {
-    selectedDate = state.months[0].volunteerDate || `${state.months[0].key}-01`;
-  }
-
-  renderCalendar();
-  renderSelectedDate();
-  renderTable();
-  scheduleSave();
-}
-
-function exportJson() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "volunteer-schedule-2026-2027.json";
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function importJson(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      state = normalizeState(JSON.parse(reader.result));
-      selectedDate = getInitialSelectedDate();
-      render();
-      saveState();
-    } catch {
-      elements.saveState.textContent = "JSON 형식 확인 필요";
-    }
-  };
-  reader.readAsText(file);
-}
-
-elements.settingsForm.addEventListener("input", updateSettingsFromForm);
-elements.settingsForm.addEventListener("change", updateSettingsFromForm);
-elements.detailForm.addEventListener("input", updateSelectedMonthFromForm);
-elements.detailForm.addEventListener("change", updateSelectedMonthFromForm);
-elements.registerDateBtn.addEventListener("click", registerSelectedDate);
-elements.copyNoticeBtn.addEventListener("click", copyNoticeText);
-document.querySelector("#fillEmptyDatesBtn").addEventListener("click", () => fillVolunteerDates(false));
-document.querySelector("#recalculateDatesBtn").addEventListener("click", () => fillVolunteerDates(true));
-document.querySelector("#exportBtn").addEventListener("click", exportJson);
-document.querySelector("#importFile").addEventListener("change", (event) => importJson(event.target.files[0]));
-document.querySelector("#resetBtn").addEventListener("click", () => {
-  const confirmed = window.confirm("입력한 내용을 초기값으로 되돌릴까요?");
-  if (!confirmed) return;
-  state = cloneInitialState();
-  selectedDate = getInitialSelectedDate();
-  render();
-  saveState();
+elements.calendarShell.addEventListener("touchend", (event) => {
+  const delta = event.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(delta) < 60) return;
+  changeMonth(delta < 0 ? 1 : -1);
 });
 
 render();

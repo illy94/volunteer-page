@@ -7,239 +7,215 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="site-header">
-      <div class="header-grid">
-        <div class="brand-block">
-          <p class="period-label">2026.07 - 2027.06</p>
-          <h1>봉사활동 캘린더</h1>
-        </div>
-        <div class="header-actions">
-          <span id="saveState">저장 대기</span>
-          <button type="button" id="exportBtn">JSON 내보내기</button>
-          <label class="file-button" for="importFile">JSON 가져오기</label>
-          <input id="importFile" type="file" accept="application/json" />
-          <button type="button" id="resetBtn">초기값 복원</button>
-        </div>
+    <header class="app-header">
+      <div>
+        <p class="period">2026.07 - 2027.06</p>
+        <h1>봉사활동 캘린더</h1>
       </div>
+      <nav class="tabs" aria-label="페이지">
+        <button type="button" class="tab-button is-active" data-tab="dashboard">대시보드</button>
+        <button type="button" class="tab-button" data-tab="organizations">봉사활동 기관 리스트</button>
+        <button type="button" class="tab-button" data-tab="archive">이전 운영</button>
+      </nav>
     </header>
 
     <main>
-      <section class="overview-band" aria-labelledby="overviewTitle">
-        <div class="current-panel">
-          <p class="section-kicker">이번 운영</p>
-          <h2 id="overviewTitle">선택된 날짜</h2>
-          <dl class="current-list">
+      <section class="tab-panel is-active" id="dashboardPanel" data-panel="dashboard">
+        <section class="calendar-view" id="calendarView" aria-labelledby="calendarTitle">
+          <div class="month-toolbar">
+            <button type="button" id="prevMonthBtn" aria-label="이전 달">이전</button>
             <div>
-              <dt>담당</dt>
-              <dd id="currentOwner">태연</dd>
+              <p class="eyebrow">대시보드</p>
+              <h2 id="calendarTitle">2026년 7월</h2>
+              <p class="month-owner" id="monthOwner">담당: 태연</p>
             </div>
-            <div>
-              <dt>봉사</dt>
-              <dd id="currentVolunteer">미정</dd>
-            </div>
-            <div>
-              <dt>시간</dt>
-              <dd id="currentTime">미정</dd>
-            </div>
-          </dl>
-        </div>
-        <div class="quick-links" aria-labelledby="quickLinksTitle">
-          <p class="section-kicker">바로가기</p>
-          <h2 id="quickLinksTitle">공유 링크</h2>
-          <div class="link-buttons" id="linkButtons"></div>
-        </div>
-      </section>
-
-      <section class="control-band" aria-labelledby="settingsTitle">
-        <div>
-          <p class="section-kicker">운영 설정</p>
-          <h2 id="settingsTitle">봉사요일과 링크</h2>
-        </div>
-        <form class="settings-grid" id="settingsForm">
-          <label>
-            단톡방 링크
-            <input name="chatLink" type="url" inputmode="url" placeholder="https://" />
-          </label>
-          <label>
-            신청 폼
-            <input name="formLink" type="url" inputmode="url" placeholder="https://" />
-          </label>
-          <label>
-            사진 앨범
-            <input name="albumLink" type="url" inputmode="url" placeholder="https://" />
-          </label>
-          <label>
-            공지 문서
-            <input name="noticeLink" type="url" inputmode="url" placeholder="https://" />
-          </label>
-          <label>
-            기본 주차
-            <select name="weekOrdinal">
-              <option value="1">첫째 주</option>
-              <option value="2">둘째 주</option>
-              <option value="3">셋째 주</option>
-              <option value="4">넷째 주</option>
-              <option value="last">마지막 주</option>
-            </select>
-          </label>
-          <label>
-            기본 요일
-            <select name="weekday">
-              <option value="0">일요일</option>
-              <option value="1">월요일</option>
-              <option value="2">화요일</option>
-              <option value="3">수요일</option>
-              <option value="4">목요일</option>
-              <option value="5">금요일</option>
-              <option value="6">토요일</option>
-            </select>
-          </label>
-          <div class="settings-actions">
-            <button type="button" id="fillEmptyDatesBtn">빈 봉사일 채우기</button>
-            <button type="button" id="recalculateDatesBtn">전체 봉사일 다시 계산</button>
+            <button type="button" id="nextMonthBtn" aria-label="다음 달">다음</button>
           </div>
-        </form>
+
+          <div class="calendar-shell" id="calendarShell">
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+
+          <div class="month-list">
+            <div class="section-heading">
+              <h3>이 달의 봉사활동</h3>
+              <span id="monthEventCount">0건</span>
+            </div>
+            <div id="monthEvents" class="month-events"></div>
+          </div>
+        </section>
+
+        <section class="date-detail" id="dateDetailView" hidden>
+          <button type="button" class="back-button" id="backToCalendarBtn">캘린더로 돌아가기</button>
+          <div class="detail-layout">
+            <aside class="detail-summary">
+              <p class="eyebrow">선택 날짜</p>
+              <h2 id="selectedDateTitle">2026년 7월 1일</h2>
+              <div id="selectedDateMeta" class="meta-list"></div>
+            </aside>
+
+            <section class="detail-content">
+              <div id="emptyState" class="empty-state">
+                <h3>등록된 봉사활동이 없습니다</h3>
+                <p>이 날짜에 진행할 봉사활동을 등록하세요.</p>
+                <button type="button" id="createEventBtn">등록하기</button>
+              </div>
+
+              <article id="eventView" class="event-view" hidden>
+                <div class="event-view-head">
+                  <div>
+                    <p class="eyebrow">봉사활동 보기</p>
+                    <h3 id="eventViewTitle">봉사활동</h3>
+                  </div>
+                  <span class="status-pill" id="eventViewStatus">준비중</span>
+                </div>
+                <dl class="event-fields" id="eventViewFields"></dl>
+                <div class="notice-box">
+                  <div class="section-heading">
+                    <h3>공지문</h3>
+                    <button type="button" id="copyNoticeBtn">공지 복사</button>
+                  </div>
+                  <textarea id="noticePreview" readonly rows="12"></textarea>
+                </div>
+                <div class="detail-actions">
+                  <button type="button" id="editEventBtn">수정</button>
+                  <button type="button" class="danger" id="deleteEventBtn">삭제</button>
+                </div>
+              </article>
+
+              <form id="eventForm" class="event-form" hidden>
+                <div class="section-heading">
+                  <h3 id="eventFormTitle">봉사활동 등록</h3>
+                  <button type="button" id="cancelEventFormBtn">취소</button>
+                </div>
+                <fieldset>
+                  <legend>기본 정보</legend>
+                  <label>
+                    봉사일
+                    <input name="date" type="date" min="2026-07-01" max="2027-06-30" required />
+                  </label>
+                  <label>
+                    담당
+                    <input name="owner" type="text" required />
+                  </label>
+                  <label>
+                    봉사명
+                    <input name="title" type="text" placeholder="예: 따스한채움터 급식봉사" required />
+                  </label>
+                  <label>
+                    상태
+                    <select name="status">
+                      <option value="준비중">준비중</option>
+                      <option value="모집중">모집중</option>
+                      <option value="확정">확정</option>
+                      <option value="완료">완료</option>
+                    </select>
+                  </label>
+                  <label>
+                    시작 시간
+                    <input name="startTime" type="time" />
+                  </label>
+                  <label>
+                    종료 시간
+                    <input name="endTime" type="time" />
+                  </label>
+                  <label class="wide">
+                    장소
+                    <input name="place" type="text" placeholder="주소, 집결 위치, 주차 여부" />
+                  </label>
+                  <label class="wide">
+                    봉사 소개
+                    <textarea name="intro" rows="3" placeholder="공지문 첫 문단에 들어갈 설명"></textarea>
+                  </label>
+                </fieldset>
+
+                <fieldset>
+                  <legend>공지 정보</legend>
+                  <label>
+                    복장
+                    <input name="dressCode" type="text" placeholder="편한 복장, 양말" />
+                  </label>
+                  <label>
+                    인원
+                    <input name="capacity" type="text" placeholder="10명 (이후 대기)" />
+                  </label>
+                  <label>
+                    정회원 참가비
+                    <input name="memberFee" type="text" placeholder="참가비 없음" />
+                  </label>
+                  <label>
+                    준회원 참가비
+                    <input name="associateFee" type="text" placeholder="1만원" />
+                  </label>
+                  <label class="wide">
+                    입금 계좌
+                    <input name="bankAccount" type="text" placeholder="은행명 계좌번호 예금주" />
+                  </label>
+                  <label class="wide">
+                    세부 일정
+                    <textarea name="detailSchedule" rows="5" placeholder="10:30 - 11:00 - OT, 역할분담 및 준비&#10;11:00 - 12:30 - 역할에 따른 배식, 서빙, 설거지 등 진행"></textarea>
+                  </label>
+                  <label class="wide">
+                    메모
+                    <textarea name="memo" rows="3" placeholder="운영진 메모"></textarea>
+                  </label>
+                </fieldset>
+
+                <div class="detail-actions">
+                  <button type="submit" class="primary">저장</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
       </section>
 
-      <section class="calendar-band" aria-labelledby="calendarTitle">
-        <div class="section-heading">
+      <section class="tab-panel" id="organizationsPanel" data-panel="organizations" hidden>
+        <div class="section-heading page-heading">
           <div>
-            <p class="section-kicker">연간 보기</p>
-            <h2 id="calendarTitle">1년 봉사 캘린더</h2>
+            <p class="eyebrow">기관 관리</p>
+            <h2>봉사활동 기관 리스트</h2>
           </div>
-          <p id="scheduleCount">12개월</p>
+          <button type="button" id="addOrganizationBtn">기관 등록</button>
         </div>
-        <div class="year-calendar" id="yearCalendar"></div>
-      </section>
-
-      <section class="detail-band" aria-labelledby="detailTitle">
-        <div class="detail-summary">
-          <p class="section-kicker">선택 날짜</p>
-          <h2 id="detailTitle">2026년 7월 1일</h2>
-          <div id="selectedDateSummary" class="selected-date-summary"></div>
-          <button type="button" id="registerDateBtn">이 날짜에 봉사 등록</button>
-        </div>
-
-        <form class="detail-form" id="detailForm">
-          <fieldset class="form-section">
-            <legend>일정</legend>
-            <label>
-              담당
-              <input name="owner" type="text" />
-            </label>
-            <label>
-              상태
-              <select name="status">
-                <option value="준비중">준비중</option>
-                <option value="모집중">모집중</option>
-                <option value="확정">확정</option>
-                <option value="완료">완료</option>
-              </select>
-            </label>
-            <label>
-              봉사명
-              <input name="volunteerTitle" type="text" placeholder="미정" />
-            </label>
-            <label>
-              봉사일
-              <input name="volunteerDate" type="date" />
-            </label>
-            <label>
-              시작 시간
-              <input name="volunteerStartTime" type="time" />
-            </label>
-            <label>
-              종료 시간
-              <input name="volunteerEndTime" type="time" />
-            </label>
-            <label class="wide-field">
-              장소
-              <input name="volunteerPlace" type="text" placeholder="미정" />
-            </label>
-            <label>
-              액티비티
-              <input name="activityTitle" type="text" placeholder="미정" />
-            </label>
-            <label>
-              액티비티 날짜
-              <input name="activityDate" type="date" />
-            </label>
-            <label>
-              행사
-              <input name="eventTitle" type="text" placeholder="없음" />
-            </label>
-            <label class="wide-field">
-              메모
-              <textarea name="note" rows="3" placeholder="준비물, 모집 인원, 링크 등을 적어두세요."></textarea>
-            </label>
-          </fieldset>
-
-          <fieldset class="form-section">
-            <legend>공지</legend>
-            <label class="wide-field">
-              봉사 소개
-              <textarea name="noticeIntro" rows="3" placeholder="예: 서울지역 취약계층 및 노숙인 분들을 위한 무료 급식 봉사활동"></textarea>
-            </label>
-            <label>
-              복장
-              <input name="dressCode" type="text" placeholder="편한 복장, 양말" />
-            </label>
-            <label>
-              인원
-              <input name="participantInfo" type="text" placeholder="10명 (이후 대기)" />
-            </label>
-            <label>
-              정회원 참가비
-              <input name="memberFee" type="text" placeholder="참가비 없음" />
-            </label>
-            <label>
-              준회원 참가비
-              <input name="associateFee" type="text" placeholder="1만원" />
-            </label>
-            <label class="wide-field">
-              입금 계좌
-              <input name="bankAccount" type="text" placeholder="은행명 계좌번호 예금주" />
-            </label>
-            <label class="wide-field">
-              세부 일정
-              <textarea name="detailSchedule" rows="5" placeholder="10:30 - 11:00 - OT, 역할분담 및 준비&#10;11:00 - 12:30 - 역할에 따른 배식, 서빙, 설거지 등 진행&#10;12:30 - 봉사활동 종료, 가능한 분들 함께 점심해요 :)"></textarea>
-            </label>
-          </fieldset>
-
-          <section class="notice-output" aria-label="공지문 미리보기">
-            <div class="notice-output-head">
-              <strong>공지문</strong>
-              <button type="button" id="copyNoticeBtn">공지 복사</button>
+        <div class="organization-layout">
+          <div id="organizationList" class="organization-list"></div>
+          <form id="organizationForm" class="organization-form" hidden>
+            <div class="section-heading">
+              <h3 id="organizationFormTitle">기관 등록</h3>
+              <button type="button" id="cancelOrganizationBtn">취소</button>
             </div>
-            <textarea id="noticePreview" class="notice-preview" readonly rows="14"></textarea>
-          </section>
-        </form>
+            <label>
+              기관명
+              <input name="name" type="text" required />
+            </label>
+            <label>
+              주소
+              <input name="address" type="text" />
+            </label>
+            <label>
+              집결/주차
+              <input name="meeting" type="text" />
+            </label>
+            <label>
+              기본 복장
+              <input name="dressCode" type="text" />
+            </label>
+            <label>
+              메모
+              <textarea name="memo" rows="4"></textarea>
+            </label>
+            <button type="submit" class="primary">저장</button>
+          </form>
+        </div>
       </section>
 
-      <section class="ops-band" aria-labelledby="opsTitle">
-        <div>
-          <p class="section-kicker">분배</p>
-          <h2 id="opsTitle">담당 횟수</h2>
-          <div class="owner-bars" id="ownerBars"></div>
+      <section class="tab-panel" id="archivePanel" data-panel="archive" hidden>
+        <div class="page-heading">
+          <p class="eyebrow">지난 기록</p>
+          <h2>이전 운영</h2>
         </div>
-        <div>
-          <p class="section-kicker">요약</p>
-          <h2>월별 운영 현황</h2>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>월</th>
-                  <th>담당</th>
-                  <th>봉사</th>
-                  <th>일시</th>
-                  <th>상태</th>
-                </tr>
-              </thead>
-              <tbody id="scheduleTable"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="archiveList" class="archive-list"></div>
       </section>
     </main>
 
