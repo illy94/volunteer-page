@@ -38,7 +38,7 @@ const defaultState = {
       address: "서울시 용산구 한강대로 377",
       meeting: "2층 봉사자대기실에서 집결, 주차 불가",
       dressCode: "편한 복장, 양말",
-      memo: "무료 급식 봉사활동 공지에 사용한 기관",
+      memo: "무료 급식 일정 공지에 사용한 기관",
     },
   ],
 };
@@ -129,6 +129,7 @@ function migrateLegacyState(input) {
           normalizeEvent({
             id: createId(),
             date: month.volunteerDate,
+            category: month.category || "봉사",
             owner: month.owner,
             title: month.volunteerTitle,
             status: month.status,
@@ -154,9 +155,11 @@ function migrateLegacyState(input) {
 }
 
 function normalizeEvent(event) {
+  const memberFee = event.memberFee || "0원";
   return {
     id: event.id || createId(),
     date: event.date || "",
+    category: event.category || event.type || "봉사",
     owner: event.owner || "",
     title: event.title || "",
     status: event.status || "준비중",
@@ -166,8 +169,8 @@ function normalizeEvent(event) {
     intro: event.intro || "",
     dressCode: event.dressCode || "편한 복장, 양말",
     capacity: event.capacity || "10명 (이후 대기)",
-    memberFee: event.memberFee || "참가비 없음",
-    associateFee: event.associateFee || "1만원 (환불 불가한 국제 로타리재단 기부금)",
+    memberFee,
+    associateFee: calculateAssociateFee(memberFee),
     bankAccount: event.bankAccount || "하나은행 210-910031-69304 서울지아이에이로타리클럽",
     detailSchedule: event.detailSchedule || "",
     memo: event.memo || "",
@@ -242,6 +245,30 @@ function valueOrPending(value, fallback = "미정") {
   return value && value.trim() ? value.trim() : fallback;
 }
 
+function parseFeeAmount(value) {
+  const text = String(value || "").replace(/\s/g, "");
+  if (!text || /무료|없음/.test(text)) return 0;
+
+  const manWon = text.match(/(\d+(?:\.\d+)?)만/);
+  if (manWon) return Math.round(Number(manWon[1]) * 10000);
+
+  const thousandWon = text.match(/(\d+(?:\.\d+)?)천/);
+  if (thousandWon) return Math.round(Number(thousandWon[1]) * 1000);
+
+  const digits = text.replaceAll(",", "").match(/\d+/g);
+  return digits ? Number(digits.join("")) : 0;
+}
+
+function formatFeeAmount(amount) {
+  if (amount === 0) return "0원";
+  if (amount % 10000 === 0) return `${amount / 10000}만원`;
+  return `${amount.toLocaleString("ko-KR")}원`;
+}
+
+function calculateAssociateFee(memberFee) {
+  return formatFeeAmount(parseFeeAmount(memberFee) + 10000);
+}
+
 function render() {
   renderTabs();
   renderCalendar();
@@ -306,8 +333,8 @@ function renderCalendar() {
       const chip = document.createElement("span");
       chip.className = "event-chip";
       chip.innerHTML = `
-        <strong>담당: ${escapeHtml(valueOrPending(event.owner))}</strong>
-        <span>${escapeHtml(valueOrPending(event.title, "봉사"))}</span>
+        <strong><span class="category-badge">${escapeHtml(event.category)}</span> 담당: ${escapeHtml(valueOrPending(event.owner))}</strong>
+        <span>${escapeHtml(valueOrPending(event.title, "일정"))}</span>
         <em>${escapeHtml(formatTimeRange(event))}</em>
       `;
       button.append(chip);
@@ -330,7 +357,7 @@ function renderMonthEvents() {
   if (!events.length) {
     const empty = document.createElement("p");
     empty.className = "subtle";
-    empty.textContent = "이 달에 등록된 봉사활동이 없습니다.";
+    empty.textContent = "이 달에 등록된 일정이 없습니다.";
     elements.monthEvents.append(empty);
     return;
   }
@@ -341,7 +368,7 @@ function renderMonthEvents() {
     button.className = "month-event";
     button.innerHTML = `
       <strong>${escapeHtml(formatShortDate(event.date))}</strong>
-      <span>${escapeHtml(valueOrPending(event.title, "봉사"))}</span>
+      <span>${escapeHtml(event.category)} · ${escapeHtml(valueOrPending(event.title, "일정"))}</span>
       <em>${escapeHtml(valueOrPending(event.owner))} / ${escapeHtml(formatTimeRange(event))}</em>
     `;
     button.addEventListener("click", () => openDateDetail(event.date));
@@ -387,7 +414,7 @@ function renderDateDetail() {
     elements.emptyState.hidden = false;
     elements.eventView.hidden = true;
     elements.eventForm.hidden = true;
-    addMeta("등록 상태", "등록된 봉사활동 없음");
+    addMeta("등록 상태", "등록된 일정 없음");
     return;
   }
 
@@ -396,7 +423,8 @@ function renderDateDetail() {
   elements.eventForm.hidden = editingEventId !== event.id;
 
   addMeta("등록 상태", event.status);
-  addMeta("봉사명", valueOrPending(event.title));
+  addMeta("구분", event.category);
+  addMeta("일정명", valueOrPending(event.title));
   addMeta("시간", formatTimeRange(event));
 
   if (editingEventId === event.id) {
@@ -404,12 +432,13 @@ function renderDateDetail() {
     return;
   }
 
-  elements.eventViewTitle.textContent = valueOrPending(event.title, "봉사활동");
+  elements.eventViewTitle.textContent = valueOrPending(event.title, "일정");
   elements.eventViewStatus.textContent = event.status;
   elements.eventViewStatus.dataset.status = event.status;
   elements.noticePreview.value = buildNoticeText(event);
   elements.eventViewFields.innerHTML = "";
   [
+    ["구분", event.category],
     ["담당", event.owner],
     ["일시", `${formatDate(event.date)} ${formatTimeRange(event)}`],
     ["장소", event.place],
@@ -456,15 +485,17 @@ function makeBlankEvent(date) {
   return normalizeEvent({
     id: "new",
     date,
+    category: "봉사",
     owner: getMonthPlan(date).owner,
     status: "모집중",
   });
 }
 
 function bindEventForm(event) {
-  elements.eventFormTitle.textContent = editingEventId === "new" ? "봉사활동 등록" : "봉사활동 수정";
+  elements.eventFormTitle.textContent = editingEventId === "new" ? "일정 등록" : "일정 수정";
   Object.entries({
     date: event.date,
+    category: event.category,
     owner: event.owner,
     title: event.title,
     status: event.status,
@@ -483,6 +514,14 @@ function bindEventForm(event) {
     const field = elements.eventForm.elements[name];
     if (field) field.value = value || "";
   });
+  syncAssociateFee();
+}
+
+function syncAssociateFee() {
+  const memberFeeField = elements.eventForm.elements.memberFee;
+  const associateFeeField = elements.eventForm.elements.associateFee;
+  if (!memberFeeField || !associateFeeField) return;
+  associateFeeField.value = calculateAssociateFee(memberFeeField.value);
 }
 
 function submitEventForm(event) {
@@ -491,6 +530,7 @@ function submitEventForm(event) {
   const payload = normalizeEvent({
     id: editingEventId === "new" ? createId() : editingEventId,
     date: data.get("date"),
+    category: data.get("category"),
     owner: data.get("owner"),
     title: data.get("title"),
     status: data.get("status"),
@@ -501,7 +541,7 @@ function submitEventForm(event) {
     dressCode: data.get("dressCode"),
     capacity: data.get("capacity"),
     memberFee: data.get("memberFee"),
-    associateFee: data.get("associateFee"),
+    associateFee: calculateAssociateFee(data.get("memberFee")),
     bankAccount: data.get("bankAccount"),
     detailSchedule: data.get("detailSchedule"),
     memo: data.get("memo"),
@@ -523,7 +563,7 @@ function submitEventForm(event) {
 function deleteSelectedEvent() {
   const event = getEventById(selectedEventId);
   if (!event) return;
-  const confirmed = window.confirm("이 봉사활동을 삭제할까요?");
+  const confirmed = window.confirm("이 일정을 삭제할까요?");
   if (!confirmed) return;
   state.events = state.events.filter((item) => item.id !== event.id);
   selectedEventId = null;
@@ -535,7 +575,7 @@ function deleteSelectedEvent() {
 }
 
 function buildNoticeText(event) {
-  const lines = [`[${formatNoticeTitleDate(event.date)}] ${valueOrPending(event.title, "봉사활동")}`];
+  const lines = [`[${formatNoticeTitleDate(event.date)}] ${valueOrPending(event.title, "일정")}`];
   if (event.intro && event.intro.trim()) lines.push(event.intro.trim());
   lines.push(
     "",
@@ -689,6 +729,7 @@ elements.editEventBtn.addEventListener("click", startEditEvent);
 elements.deleteEventBtn.addEventListener("click", deleteSelectedEvent);
 elements.cancelEventFormBtn.addEventListener("click", cancelEventForm);
 elements.eventForm.addEventListener("submit", submitEventForm);
+elements.eventForm.elements.memberFee.addEventListener("input", syncAssociateFee);
 elements.copyNoticeBtn.addEventListener("click", copyNotice);
 elements.addOrganizationBtn.addEventListener("click", startCreateOrganization);
 elements.cancelOrganizationBtn.addEventListener("click", cancelOrganizationForm);

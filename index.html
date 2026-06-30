@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>봉사활동 캘린더</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <title>운영 일정 캘린더</title>
+    <link rel="stylesheet" href="./styles.css?v=20260630-2234" />
   </head>
   <body>
     <header class="app-header">
       <div>
         <p class="period">2026.07 - 2027.06</p>
-        <h1>봉사활동 캘린더</h1>
+        <h1>운영 일정 캘린더</h1>
       </div>
       <nav class="tabs" aria-label="페이지">
         <button type="button" class="tab-button is-active" data-tab="dashboard">대시보드</button>
-        <button type="button" class="tab-button" data-tab="organizations">봉사활동 기관 리스트</button>
+        <button type="button" class="tab-button" data-tab="organizations">기관 리스트</button>
         <button type="button" class="tab-button" data-tab="archive">이전 운영</button>
       </nav>
     </header>
@@ -23,13 +23,13 @@
       <section class="tab-panel is-active" id="dashboardPanel" data-panel="dashboard">
         <section class="calendar-view" id="calendarView" aria-labelledby="calendarTitle">
           <div class="month-toolbar">
-            <button type="button" id="prevMonthBtn" aria-label="이전 달">이전</button>
+            <button type="button" class="month-nav-button" id="prevMonthBtn" aria-label="이전 달">‹</button>
             <div>
               <p class="eyebrow">대시보드</p>
               <h2 id="calendarTitle">2026년 7월</h2>
               <p class="month-owner" id="monthOwner">담당: 태연</p>
             </div>
-            <button type="button" id="nextMonthBtn" aria-label="다음 달">다음</button>
+            <button type="button" class="month-nav-button" id="nextMonthBtn" aria-label="다음 달">›</button>
           </div>
 
           <div class="calendar-shell" id="calendarShell">
@@ -38,7 +38,7 @@
 
           <div class="month-list">
             <div class="section-heading">
-              <h3>이 달의 봉사활동</h3>
+              <h3>이 달의 일정</h3>
               <span id="monthEventCount">0건</span>
             </div>
             <div id="monthEvents" class="month-events"></div>
@@ -56,16 +56,16 @@
 
             <section class="detail-content">
               <div id="emptyState" class="empty-state">
-                <h3>등록된 봉사활동이 없습니다</h3>
-                <p>이 날짜에 진행할 봉사활동을 등록하세요.</p>
+                <h3>등록된 일정이 없습니다</h3>
+                <p>이 날짜에 진행할 일정을 등록하세요.</p>
                 <button type="button" id="createEventBtn">등록하기</button>
               </div>
 
               <article id="eventView" class="event-view" hidden>
                 <div class="event-view-head">
                   <div>
-                    <p class="eyebrow">봉사활동 보기</p>
-                    <h3 id="eventViewTitle">봉사활동</h3>
+                    <p class="eyebrow">일정 보기</p>
+                    <h3 id="eventViewTitle">일정</h3>
                   </div>
                   <span class="status-pill" id="eventViewStatus">준비중</span>
                 </div>
@@ -85,22 +85,30 @@
 
               <form id="eventForm" class="event-form" hidden>
                 <div class="section-heading">
-                  <h3 id="eventFormTitle">봉사활동 등록</h3>
+                  <h3 id="eventFormTitle">일정 등록</h3>
                   <button type="button" id="cancelEventFormBtn">취소</button>
                 </div>
                 <fieldset>
                   <legend>기본 정보</legend>
                   <label>
-                    봉사일
+                    날짜
                     <input name="date" type="date" min="2026-07-01" max="2027-06-30" required />
+                  </label>
+                  <label>
+                    구분
+                    <select name="category">
+                      <option value="봉사">봉사</option>
+                      <option value="액티비티">액티비티</option>
+                      <option value="행사">행사</option>
+                    </select>
                   </label>
                   <label>
                     담당
                     <input name="owner" type="text" required />
                   </label>
                   <label>
-                    봉사명
-                    <input name="title" type="text" placeholder="예: 따스한채움터 급식봉사" required />
+                    일정명
+                    <input name="title" type="text" placeholder="예: 따스한채움터 급식봉사 / 볼링 / 송년회" required />
                   </label>
                   <label>
                     상태
@@ -124,7 +132,7 @@
                     <input name="place" type="text" placeholder="주소, 집결 위치, 주차 여부" />
                   </label>
                   <label class="wide">
-                    봉사 소개
+                    일정 소개
                     <textarea name="intro" rows="3" placeholder="공지문 첫 문단에 들어갈 설명"></textarea>
                   </label>
                 </fieldset>
@@ -141,11 +149,11 @@
                   </label>
                   <label>
                     정회원 참가비
-                    <input name="memberFee" type="text" placeholder="참가비 없음" />
+                    <input name="memberFee" type="text" placeholder="0원 또는 4만원" />
                   </label>
                   <label>
                     준회원 참가비
-                    <input name="associateFee" type="text" placeholder="1만원" />
+                    <input name="associateFee" type="text" placeholder="정회원 + 1만원" readonly />
                   </label>
                   <label class="wide">
                     입금 계좌
@@ -174,7 +182,7 @@
         <div class="section-heading page-heading">
           <div>
             <p class="eyebrow">기관 관리</p>
-            <h2>봉사활동 기관 리스트</h2>
+            <h2>기관 리스트</h2>
           </div>
           <button type="button" id="addOrganizationBtn">기관 등록</button>
         </div>
@@ -219,6 +227,6 @@
       </section>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260630-2234"></script>
   </body>
 </html>

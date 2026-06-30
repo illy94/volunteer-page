@@ -37,6 +37,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  padding-bottom: 44px;
 }
 
 button,
@@ -72,6 +73,14 @@ button:disabled {
   opacity: 0.45;
 }
 
+.month-nav-button {
+  font-size: 1.35rem;
+  font-weight: 850;
+  min-height: 34px;
+  padding: 0;
+  width: 34px;
+}
+
 button.primary,
 #createEventBtn {
   background: var(--accent);
@@ -103,6 +112,11 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+input[readonly] {
+  background: var(--muted-panel);
+  color: var(--muted);
+}
+
 h1,
 h2,
 h3,
@@ -111,13 +125,13 @@ p {
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 1.9rem;
   font-weight: 850;
   line-height: 1.05;
 }
 
 h2 {
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 850;
   line-height: 1.08;
 }
@@ -130,16 +144,18 @@ h3 {
 .app-header,
 main {
   margin: 0 auto;
-  max-width: 1280px;
-  padding-left: 20px;
-  padding-right: 20px;
+  max-width: 1220px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .app-header {
-  display: grid;
-  gap: 18px;
-  padding-bottom: 16px;
-  padding-top: 24px;
+  align-items: end;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  padding-top: 22px;
 }
 
 .period,
@@ -155,7 +171,9 @@ main {
   border-radius: 8px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 520px;
   padding: 4px;
+  width: min(520px, 100%);
 }
 
 .tab-button {
@@ -178,7 +196,7 @@ main {
 .tab-panel > .page-heading,
 .organization-layout,
 .archive-list {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .month-toolbar {
@@ -189,7 +207,7 @@ main {
   display: grid;
   gap: 14px;
   grid-template-columns: auto 1fr auto;
-  padding: 18px;
+  padding: 14px 16px;
 }
 
 .month-toolbar > div {
@@ -288,8 +306,22 @@ main {
 }
 
 .event-chip strong {
+  align-items: center;
   color: var(--accent);
+  display: flex;
   font-size: 0.78rem;
+  gap: 5px;
+}
+
+.category-badge {
+  background: #dbeafe;
+  border-radius: 4px;
+  color: #1e40af;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1;
+  padding: 4px 6px;
 }
 
 .event-chip span {
@@ -597,6 +629,16 @@ textarea {
 }
 
 @media (max-width: 920px) {
+  .app-header {
+    align-items: stretch;
+    display: grid;
+    gap: 14px;
+  }
+
+  .tabs {
+    max-width: none;
+  }
+
   .tabs,
   .detail-layout,
   .organization-layout,
@@ -615,11 +657,11 @@ textarea {
 
 @media (max-width: 640px) {
   h1 {
-    font-size: 2rem;
+    font-size: 1.65rem;
   }
 
   h2 {
-    font-size: 1.45rem;
+    font-size: 1.35rem;
   }
 
   .app-header,
