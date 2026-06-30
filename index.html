@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>운영 일정 캘린더</title>
-    <link rel="stylesheet" href="./styles.css?v=20260630-2234" />
+    <link rel="stylesheet" href="./styles.css?v=20260630-2245" />
   </head>
   <body>
     <header class="app-header">
@@ -15,6 +15,7 @@
       <nav class="tabs" aria-label="페이지">
         <button type="button" class="tab-button is-active" data-tab="dashboard">대시보드</button>
         <button type="button" class="tab-button" data-tab="organizations">기관 리스트</button>
+        <button type="button" class="tab-button" data-tab="executives">11기 임원</button>
         <button type="button" class="tab-button" data-tab="archive">이전 운영</button>
       </nav>
     </header>
@@ -218,6 +219,39 @@
         </div>
       </section>
 
+      <section class="tab-panel" id="executivesPanel" data-panel="executives" hidden>
+        <div class="page-heading">
+          <p class="eyebrow">GIA 운영진</p>
+          <h2>11기 GIA 임원</h2>
+        </div>
+        <div class="executive-list">
+          <article class="executive-card is-lead">
+            <span>회장</span>
+            <strong>김명인</strong>
+          </article>
+          <article class="executive-card">
+            <span>총무</span>
+            <strong>김혜진</strong>
+          </article>
+          <article class="executive-card">
+            <span>봉사</span>
+            <strong>김태연, 윤세영, 박세연</strong>
+          </article>
+          <article class="executive-card">
+            <span>회원관리</span>
+            <strong>김환규</strong>
+          </article>
+          <article class="executive-card">
+            <span>재무/감사</span>
+            <strong>김새결</strong>
+          </article>
+          <article class="executive-card">
+            <span>2부(96이하)</span>
+            <strong>이혜민</strong>
+          </article>
+        </div>
+      </section>
+
       <section class="tab-panel" id="archivePanel" data-panel="archive" hidden>
         <div class="page-heading">
           <p class="eyebrow">지난 기록</p>
@@ -227,6 +261,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=20260630-2234"></script>
+    <script src="./app.js?v=20260630-2245"></script>
   </body>
 </html>
