@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>봉사활동 운영표</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-grid">
+        <div class="brand-block">
+          <p class="period-label">2026.07 - 2027.06</p>
+          <h1>봉사활동 운영표</h1>
+        </div>
+        <div class="header-meta">
+          <span id="saveState">저장 대기</span>
+          <button type="button" id="exportBtn">JSON 내보내기</button>
+          <label class="file-button" for="importFile">JSON 가져오기</label>
+          <input id="importFile" type="file" accept="application/json" />
+          <button type="button" id="resetBtn">초기값 복원</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="summary-band" aria-labelledby="thisMonthTitle">
+        <div class="month-number" id="thisMonthNumber">07</div>
+        <div class="this-month-panel">
+          <p class="section-kicker">이번 달</p>
+          <h2 id="thisMonthTitle">2026년 7월</h2>
+          <dl class="this-month-list">
+            <div>
+              <dt>담당</dt>
+              <dd id="thisMonthOwner">태연</dd>
+            </div>
+            <div>
+              <dt>봉사</dt>
+              <dd id="thisMonthVolunteer">미정</dd>
+            </div>
+            <div>
+              <dt>액티비티</dt>
+              <dd id="thisMonthActivity">미정</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="quick-links" aria-labelledby="quickLinksTitle">
+          <h2 id="quickLinksTitle">바로가기</h2>
+          <div class="link-buttons" id="linkButtons"></div>
+        </div>
+      </section>
+
+      <section class="control-band" aria-labelledby="settingsTitle">
+        <div>
+          <p class="section-kicker">운영 설정</p>
+          <h2 id="settingsTitle">봉사요일과 링크</h2>
+        </div>
+        <form class="settings-grid" id="settingsForm">
+          <label>
+            단톡방 링크
+            <input name="chatLink" type="url" inputmode="url" placeholder="https://" />
+          </label>
+          <label>
+            신청 폼
+            <input name="formLink" type="url" inputmode="url" placeholder="https://" />
+          </label>
+          <label>
+            사진 앨범
+            <input name="albumLink" type="url" inputmode="url" placeholder="https://" />
+          </label>
+          <label>
+            공지 문서
+            <input name="noticeLink" type="url" inputmode="url" placeholder="https://" />
+          </label>
+          <label>
+            기본 주차
+            <select name="weekOrdinal">
+              <option value="1">첫째 주</option>
+              <option value="2">둘째 주</option>
+              <option value="3">셋째 주</option>
+              <option value="4">넷째 주</option>
+              <option value="last">마지막 주</option>
+            </select>
+          </label>
+          <label>
+            기본 요일
+            <select name="weekday">
+              <option value="0">일요일</option>
+              <option value="1">월요일</option>
+              <option value="2">화요일</option>
+              <option value="3">수요일</option>
+              <option value="4">목요일</option>
+              <option value="5">금요일</option>
+              <option value="6">토요일</option>
+            </select>
+          </label>
+          <div class="settings-actions">
+            <button type="button" id="fillEmptyDatesBtn">빈 봉사일 채우기</button>
+            <button type="button" id="recalculateDatesBtn">전체 봉사일 다시 계산</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="cards-band" aria-labelledby="scheduleTitle">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">입력</p>
+            <h2 id="scheduleTitle">2026년 7월부터 2027년 6월까지</h2>
+          </div>
+          <p id="scheduleCount">12개월</p>
+        </div>
+        <div class="month-cards" id="monthCards"></div>
+      </section>
+
+      <section class="table-band" aria-labelledby="tableTitle">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">전체표</p>
+            <h2 id="tableTitle">연간 운영 현황</h2>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>월</th>
+                <th>담당</th>
+                <th>봉사</th>
+                <th>봉사일</th>
+                <th>액티비티</th>
+                <th>행사</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="insight-band" aria-labelledby="insightTitle">
+        <div>
+          <p class="section-kicker">분배</p>
+          <h2 id="insightTitle">담당 횟수</h2>
+          <div class="owner-bars" id="ownerBars"></div>
+        </div>
+        <div>
+          <p class="section-kicker">기록</p>
+          <h2>지난 운영</h2>
+          <div class="archive-grid" id="archiveGrid"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="monthCardTemplate">
+      <article class="month-card">
+        <div class="card-head">
+          <span class="card-number"></span>
+          <div>
+            <h3></h3>
+            <p class="weekday-preview"></p>
+          </div>
+        </div>
+        <form class="month-form">
+          <fieldset class="form-section">
+            <legend>월간 일정</legend>
+            <label>
+              담당
+              <input name="owner" type="text" />
+            </label>
+            <label>
+              상태
+              <select name="status">
+                <option value="준비중">준비중</option>
+                <option value="모집중">모집중</option>
+                <option value="확정">확정</option>
+                <option value="완료">완료</option>
+              </select>
+            </label>
+            <label>
+              봉사명
+              <input name="volunteerTitle" type="text" placeholder="미정" />
+            </label>
+            <label>
+              봉사일
+              <input name="volunteerDate" type="date" />
+            </label>
+            <label>
+              시작 시간
+              <input name="volunteerStartTime" type="time" />
+            </label>
+            <label>
+              종료 시간
+              <input name="volunteerEndTime" type="time" />
+            </label>
+            <label class="wide-field">
+              장소
+              <input name="volunteerPlace" type="text" placeholder="미정" />
+            </label>
+            <label>
+              액티비티
+              <input name="activityTitle" type="text" placeholder="미정" />
+            </label>
+            <label>
+              액티비티 날짜
+              <input name="activityDate" type="date" />
+            </label>
+            <label>
+              행사
+              <input name="eventTitle" type="text" placeholder="없음" />
+            </label>
+            <label class="wide-field">
+              메모
+              <textarea name="note" rows="3" placeholder="준비물, 모집 인원, 링크 등을 적어두세요."></textarea>
+            </label>
+          </fieldset>
+
+          <fieldset class="form-section">
+            <legend>공지 입력</legend>
+            <label class="wide-field">
+              봉사 소개
+              <textarea name="noticeIntro" rows="3" placeholder="예: 서울지역 취약계층 및 노숙인 분들을 위한 무료 급식 봉사활동"></textarea>
+            </label>
+            <label>
+              복장
+              <input name="dressCode" type="text" placeholder="편한 복장, 양말" />
+            </label>
+            <label>
+              인원
+              <input name="participantInfo" type="text" placeholder="10명 (이후 대기)" />
+            </label>
+            <label>
+              정회원 참가비
+              <input name="memberFee" type="text" placeholder="참가비 없음" />
+            </label>
+            <label>
+              준회원 참가비
+              <input name="associateFee" type="text" placeholder="1만원" />
+            </label>
+            <label class="wide-field">
+              입금 계좌
+              <input name="bankAccount" type="text" placeholder="은행명 계좌번호 예금주" />
+            </label>
+            <label class="wide-field">
+              세부 일정
+              <textarea name="detailSchedule" rows="5" placeholder="10:30 - 11:00 - OT, 역할분담 및 준비&#10;11:00 - 12:30 - 역할에 따른 배식, 서빙, 설거지 등 진행&#10;12:30 - 봉사활동 종료, 가능한 분들 함께 점심해요 :)"></textarea>
+            </label>
+          </fieldset>
+
+          <section class="notice-output" aria-label="공지문 미리보기">
+            <div class="notice-output-head">
+              <strong>공지문</strong>
+              <button type="button" class="copy-notice-button">공지 복사</button>
+            </div>
+            <textarea class="notice-preview" readonly rows="16"></textarea>
+          </section>
+        </form>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
